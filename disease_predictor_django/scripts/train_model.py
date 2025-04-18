@@ -4,6 +4,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
+from sklearn.feature_extraction.text import TfidfVectorizer
 import joblib
 import os
 
@@ -26,20 +27,14 @@ if not os.path.exists(dataset_path):
 # Load the CSV file
 df = pd.read_csv(dataset_path)
 
-# Combine all symptoms into a unique list
-all_symptoms = set()
-df['Symptoms'] = df['Symptoms'].apply(lambda x: x.lower())
-for symptoms in df['Symptoms']:
-    all_symptoms.update(symptoms.split(','))
-all_symptoms = sorted(list(all_symptoms))
+# Initialize the TfidfVectorizer for symptom descriptions
+vectorizer = TfidfVectorizer(stop_words='english')
 
-# One-hot encode symptoms
-def encode_symptoms(symptom_str):
-    symptoms = symptom_str.lower().split(',')
-    return [1 if s in symptoms else 0 for s in all_symptoms]
+# Apply vectorizer on the symptom descriptions to get features
+symptom_descriptions = df['Symptoms'].tolist()
+X = vectorizer.fit_transform(symptom_descriptions)  # This will create the term-document matrix
+X = X.toarray()  # Convert sparse matrix to array for training
 
-X = df['Symptoms'].apply(encode_symptoms).tolist()
-X = np.array(X)
 y = df['Disease']
 
 # Encode target labels
@@ -49,10 +44,14 @@ y_encoded = label_encoder.fit_transform(y)
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.2, random_state=42)
 
-# Feature scaling
+# Feature scaling (apply scaler only if required, here it's not strictly necessary for TF-IDF)
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
+
+# Dump the vectorizer for future use
+joblib.dump(vectorizer, os.path.join(MODEL_DIR, 'vectorizer.pkl'))  # Save the vectorizer
+print("Vectorizer has been saved successfully.")
 
 # Train model
 model = RandomForestClassifier(n_estimators=100, random_state=42)

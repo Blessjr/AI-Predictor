@@ -9,42 +9,39 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 model = joblib.load(os.path.join(BASE_DIR, "models/model.pkl"))
 scaler = joblib.load(os.path.join(BASE_DIR, "models/scaler.pkl"))
 label_encoder = joblib.load(os.path.join(BASE_DIR, "models/label_encoder.pkl"))
-
-# Load the exact training symptom list (ordered and consistent)
-symptom_list = []
-with open(os.path.join(BASE_DIR, 'data/symptoms_list.txt')) as f:
-    for line in f:
-        parts = line.strip().split(',')[1:]  # skip first column if it's a disease name
-        symptom_list.extend(parts)
-
-# Final list of symptoms in training order (no deduplication to preserve count)
-# If needed, deduplicate but preserve order — ONLY if your training data had deduplication
-seen = set()
-ordered_symptom_list = [s for s in symptom_list if not (s in seen or seen.add(s))]
-
+vectorizer = joblib.load(os.path.join(BASE_DIR, "models/vectorizer.pkl"))  # TF-IDF or CountVectorizer
+symptom_list = joblib.load(os.path.join(BASE_DIR, "models/symptom_list.pkl"))  # Use full path
 
 def index(request):
-    return render(request, "predictor/index.html", {"symptoms": ordered_symptom_list})
-
+    return render(request, "predictor/index.html", {"symptoms": symptom_list})
 
 def predict(request):
     if request.method == 'POST':
-        user_symptoms = request.POST.getlist('symptoms')  # ✅ safe from form input
+        # Get the full symptom description from textarea
+        symptom_description = request.POST.get('symptoms')
+        predicted_disease, accuracy = predict_disease(symptom_description)
 
-        # Build input vector based on training symptom list
-        input_vector = [1 if symptom in user_symptoms else 0 for symptom in ordered_symptom_list]
+        return render(request, 'predictor/result.html', {
+            'predicted_disease': predicted_disease,
+            'accuracy': accuracy,
+        })
+    return render(request, 'predictor/index.html', {"symptoms": symptom_list})
 
-        # Ensure feature count matches training
-        if len(input_vector) != scaler.n_features_in_:
-            return render(request, 'predictor/error.html', {
-                'message': f"Feature count mismatch: expected {scaler.n_features_in_}, got {len(input_vector)}"
-            })
+def predict_disease(symptom_description):
+    """
+    Predict disease based on user symptom description (a full sentence).
+    """
+    # Step 1: Vectorize the input text (symptom description) using the pre-trained vectorizer
+    input_vector = vectorizer.transform([symptom_description])  # shape: (1, 2531)
 
-        # Scale and predict
-        input_vector_scaled = scaler.transform([input_vector])
-        prediction = model.predict(input_vector_scaled)
+    # Step 2: Predict using the model
+    prediction = model.predict(input_vector)[0]
 
-        return render(request, 'predictor/result.html', {'prediction': prediction[0]})
-    
-    else:
-        return render(request, 'predictor/predict.html')
+    # Step 3: Map the predicted class to the actual disease name using LabelEncoder
+    predicted_disease = label_encoder.inverse_transform([prediction])[0]
+
+    # Step 4: Get the confidence score (probability) of the predicted class
+    confidence_scores = model.predict_proba(input_vector)
+    accuracy = round(np.max(confidence_scores) * 100, 2)  # The highest probability is used as confidence
+
+    return predicted_disease, accuracy

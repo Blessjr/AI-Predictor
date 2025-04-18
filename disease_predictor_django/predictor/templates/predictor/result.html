@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Result</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Disease Prediction Result</h1>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <h3 class="card-title">Predicted Disease:</h3>
+                <p class="lead">{{ predicted_disease }}</p>
+
+                <h4 class="card-title">Prediction Accuracy:</h4>
+                <p class="lead">{{ accuracy }}%</p>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="{% url 'predict' %}" class="btn btn-primary">Make Another Prediction</a>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS for any interactive components (optional) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
