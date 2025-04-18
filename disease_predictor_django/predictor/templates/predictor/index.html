@@ -23,7 +23,7 @@
     <form method="POST" action="{% url 'predict' %}">
         {% csrf_token %}
         <div class="mb-3">
-            <label for="symptomInput" class="form-label">Enter Symptoms (comma-separated):</label>
+            <label for="symptomInput" class="form-label">Enter Symptoms and Predict:</label>
             <input type="text" id="symptomInput" name="symptoms" class="form-control">
         </div>
         <button type="submit" class="btn btn-primary">Predict</button>
